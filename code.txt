@@ -9,3 +9,4 @@ add a line of zhe no farward
 resolve the bug!
 now is worke !
 add a line for a test about origin!
+try to pull origin!
