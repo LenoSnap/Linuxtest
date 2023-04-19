@@ -20,5 +20,5 @@ module_exit(hello_exit);
 
 MODULE_LICENSE("GPL2");
 MODULE_AUTHOR("amin");
-MODULE_DESCRIPTION("hello world module");
-MODULE_ALIAS("test_module");
+MODULE_DESCRIPTION("hello  module");
+MODULE_ALIAS("_module");
