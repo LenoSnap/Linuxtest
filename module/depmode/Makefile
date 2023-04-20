@@ -6,6 +6,7 @@ ARCH=arm64
 CROSS_COMPILE=aarch64-linux-
 export  ARCH  CROSS_COMPILE
 # calculation模块是依赖于parametermodule模块的，所以这里一起编译
+# CURDIR 是 make 的内嵌变量，自动设置为当前目录。
 obj-m := parametermodule.o calculation.o 
 
 all:
@@ -17,5 +18,5 @@ clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURDIR) clean	
 
 copy:
-	sudo  cp1 *.ko  /home/amin/Linuxmode/
+	sudo  cp *.ko  /home/amin/Linuxmode/
 	#cp *.ko /lib/module/4.15.0-20-generic/
