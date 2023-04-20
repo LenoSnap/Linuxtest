@@ -1,0 +1,3 @@
+0x778788bd	my_sub	/home/amin/gtiware/Linuxtest/module/depmode/parametermodule	EXPORT_SYMBOL
+0xfff59bfd	itype	/home/amin/gtiware/Linuxtest/module/depmode/parametermodule	EXPORT_SYMBOL
+0x9f9684fc	my_add	/home/amin/gtiware/Linuxtest/module/depmode/parametermodule	EXPORT_SYMBOL

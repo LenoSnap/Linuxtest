@@ -1,0 +1,1 @@
+cmd_/home/amin/gtiware/Linuxtest/module/depmode/calculation.ko := aarch64-linux-ld -EL -r --fix-cortex-a53-843419 -T /home/amin/work/lichee/linux-3.10/scripts/module-common.lds --build-id  -o /home/amin/gtiware/Linuxtest/module/depmode/calculation.ko /home/amin/gtiware/Linuxtest/module/depmode/calculation.o /home/amin/gtiware/Linuxtest/module/depmode/calculation.mod.o
