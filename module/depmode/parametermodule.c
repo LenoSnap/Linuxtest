@@ -61,6 +61,6 @@ module_init(param_init);
 module_exit(param_exit);
 
 MODULE_LICENSE("GPL2");
-MODULE_AUTHOR("embedfire ");
+MODULE_AUTHOR("amin");
 MODULE_DESCRIPTION("module_param");
 MODULE_ALIAS("module_param");

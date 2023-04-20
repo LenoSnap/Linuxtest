@@ -21,6 +21,6 @@ module_init(calculation_init);
 module_exit(calculation_exit);
 
 MODULE_LICENSE("GPL2");
-MODULE_AUTHOR("embedfire ");
-MODULE_DESCRIPTION("calculation module");
-MODULE_ALIAS("calculation_module");
+MODULE_AUTHOR("amin");
+MODULE_DESCRIPTION("calculation module");//模块详细信息
+MODULE_ALIAS("calculation_module");//模块别名
