@@ -8,7 +8,7 @@ export  ARCH  CROSS_COMPILE
 # calculation模块是依赖于parametermodule模块的，所以这里一起编译
 # CURDIR 是 make 的内嵌变量，自动设置为当前目录。
 
-obj-m := led_cdev.o
+obj-m := led_chardev.o
 out =  led_cdev_test
 
 all:

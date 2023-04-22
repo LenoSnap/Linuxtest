@@ -10,49 +10,71 @@
 
 static dev_t devno;
 struct class *led_chrdev_class;
-
+/*
+描述一个字符设备的结构体
+数据寄存器虚拟地址指针
+输入输出方向寄存器虚拟地址指针
+端口复用寄存器虚拟地址指针
+时钟寄存器虚拟地址指针
+电气属性寄存器虚拟地址指针
+装载数据寄存器（物理地址）的变量
+装载输出方向寄存器（物理地址）的变量
+装载端口复用寄存器（物理地址）的变量
+装载时钟寄存器（物理地址）的变量
+装载电气属性寄存器（物理地址）的变量
+LED 的引脚
+时钟偏移地址（相对于 CCM_CCGRx）
+*/
 struct led_chrdev {
-	struct cdev dev;   描述一个字符设备的结构体
+	struct cdev dev;  
 
-	unsigned int __iomem *va_dr;          //数据寄存器虚拟地址指针
-	unsigned int __iomem *va_gdir;        //输入输出方向寄存器虚拟地址指针
-	unsigned int __iomem *va_iomuxc_mux;   //端口复用寄存器虚拟地址指针
-	unsigned int __iomem *va_ccm_ccgrx;    //时钟寄存器虚拟地址指针
-	unsigned int __iomem *va_iomux_pad;    //电气属性寄存器虚拟地址指针
+	unsigned int __iomem *va_dr;         
+	unsigned int __iomem *va_gdir;        
+	unsigned int __iomem *va_iomuxc_mux;   
+	unsigned int __iomem *va_ccm_ccgrx;    
+	unsigned int __iomem *va_iomux_pad;    
 
-	unsigned long pa_dr;              //装载数据寄存器（物理地址）的变量
-	unsigned long pa_gdir;            //装载输出方向寄存器（物理地址）的变量
-	unsigned long pa_iomuxc_mux;     // 装载端口复用寄存器（物理地址）的变量
-	unsigned long pa_ccm_ccgrx;      // 装载时钟寄存器（物理地址）的变量
-	unsigned long pa_iomux_pad;      // 装载电气属性寄存器（物理地址）的变量
+	unsigned long pa_dr;              
+	unsigned long pa_gdir;           
+	unsigned long pa_iomuxc_mux;     
+	unsigned long pa_ccm_ccgrx;      
+	unsigned long pa_iomux_pad;     
 
-	unsigned int led_pin;         //  LED 的引脚
-	unsigned int clock_offset;    //  时钟偏移地址（相对于 CCM_CCGRx）
+	unsigned int led_pin;        
+	unsigned int clock_offset;    
 };
 
 /*
-file_operations 中 open 函数的实现,主要是通过内存映射的方式将
+
+定义字符设备驱动提供给VFS的接口函数，如常见的open()、read()、write()等
+file_operations 中 open 函数的实现,主要是通过内存映射的方式
+
 */
 static int led_chrdev_open(struct inode *inode, struct file *filp)
 {
 	unsigned int val = 0;
+	//通过 led_chrdev 结构变量中 dev 成员的地址传到这个结构体变量的首地址
 	struct led_chrdev *led_cdev =
 	    (struct led_chrdev *)container_of(inode->i_cdev, struct led_chrdev,
 					      dev);
-	filp->private_data =
-	    container_of(inode->i_cdev, struct led_chrdev, dev);
+	filp->private_data =                                     
+	    container_of(inode->i_cdev, struct led_chrdev, dev); //把文件的私有数据 private_data 指向设备结构体 led_cdev
 
 	printk("open\n");
+    //将 设备各个成员的 指针指向映射后的虚拟地址起始处，这段地址大小为 4 个字节
+	led_cdev->va_dr = ioremap(led_cdev->pa_dr, 4); 
 
-	led_cdev->va_dr = ioremap(led_cdev->pa_dr, 4);
 	led_cdev->va_gdir = ioremap(led_cdev->pa_gdir, 4);
 	led_cdev->va_iomuxc_mux = ioremap(led_cdev->pa_iomuxc_mux, 4);
 	led_cdev->va_ccm_ccgrx = ioremap(led_cdev->pa_ccm_ccgrx, 4);
 	led_cdev->va_iomux_pad = ioremap(led_cdev->pa_iomux_pad, 4);
-
+	//读取被映射后虚拟地址的的数据，此地址的数据是实际数据寄存器（物理地址）的
+    //这里在ARM下readx 和 ioreadx 的区别是后者会进行大小端序的检查
 	val = ioread32(led_cdev->va_ccm_ccgrx);
+
 	val &= ~(3 << led_cdev->clock_offset);
 	val |= (3 << led_cdev->clock_offset);
+	
 	iowrite32(val, led_cdev->va_ccm_ccgrx);
 
 	iowrite32(5, led_cdev->va_iomuxc_mux);
@@ -65,12 +87,16 @@ static int led_chrdev_open(struct inode *inode, struct file *filp)
 	iowrite32(val, led_cdev->va_gdir);
 
 	val = ioread32(led_cdev->va_dr);
-	val |= (0x01 << led_cdev->led_pin);
+	val |= (0x01 << led_cdev->led_pin); //设置输出高电平
+	//把修改后的值重新写入到被映射后的虚拟地址当中，即往寄存器中写入了数据
 	iowrite32(val, led_cdev->va_dr);
 
 	return 0;
 }
-
+/*
+   container_of通过找到结构体的首地址
+   然后通过iounmap进行地址映射
+*/
 static int led_chrdev_release(struct inode *inode, struct file *filp)
 {
 	struct led_chrdev *led_cdev =
@@ -91,11 +117,12 @@ static ssize_t led_chrdev_write(struct file *filp, const char __user * buf,
 	unsigned long ret = 0;
 
 	int tmp = count;
-
+ 
 	kstrtoul_from_user(buf, tmp, 10, &ret);
 	struct led_chrdev *led_cdev = (struct led_chrdev *)filp->private_data;
 
 	val = ioread32(led_cdev->va_dr);
+	
 	if (ret == 0)
 		val &= ~(0x01 << led_cdev->led_pin);
 	else
@@ -114,15 +141,15 @@ static struct file_operations led_chrdev_fops = {
 };
 
 static struct led_chrdev led_cdev[DEV_CNT] = {
-	{.pa_dr = 0x0209C000,.pa_gdir = 0x0209C004,.pa_iomuxc_mux =
-	 0x20E006C,.pa_ccm_ccgrx = 0x20C406C,.pa_iomux_pad =
-	 0x20E02F8,.led_pin = 4,.clock_offset = 26},                    //初始化红灯结构体成员变量
-	{.pa_dr = 0x20A8000,.pa_gdir = 0x20A8004,.pa_iomuxc_mux =
-	 0x20E01E0,.pa_ccm_ccgrx = 0x20C4074,.pa_iomux_pad =
-	 0x20E046C,.led_pin = 20,.clock_offset = 12},                   //初始化绿灯结构体成员变量
-	{.pa_dr = 0x20A8000,.pa_gdir = 0x20A8004,.pa_iomuxc_mux =
-	 0x20E01DC,.pa_ccm_ccgrx = 0x20C4074,.pa_iomux_pad =
-	 0x20E0468,.led_pin = 19,.clock_offset = 12},                    //初始化蓝灯结构体成员变量
+	// {.pa_dr = 0x0209C000,.pa_gdir = 0x0209C004,.pa_iomuxc_mux =
+	//  0x20E006C,.pa_ccm_ccgrx = 0x20C406C,.pa_iomux_pad =
+	//  0x20E02F8,.led_pin = 4,.clock_offset = 26},                    //初始化红灯结构体成员变量
+	// {.pa_dr = 0x20A8000,.pa_gdir = 0x20A8004,.pa_iomuxc_mux =
+	//  0x20E01E0,.pa_ccm_ccgrx = 0x20C4074,.pa_iomux_pad =
+	//  0x20E046C,.led_pin = 20,.clock_offset = 12},                   //初始化绿灯结构体成员变量
+	// {.pa_dr = 0x20A8000,.pa_gdir = 0x20A8004,.pa_iomuxc_mux =
+	//  0x20E01DC,.pa_ccm_ccgrx = 0x20C4074,.pa_iomux_pad =
+	//  0x20E0468,.led_pin = 19,.clock_offset = 12},                    //初始化蓝灯结构体成员变量
 };
 
 static __init int led_chrdev_init(void)   //内核 RGB 模块的加载函数
@@ -147,7 +174,7 @@ Major = 0 开始，逐个查找设备号，直到找到一个闲置的设备号�
 	alloc_chrdev_region(&devno, 0, DEV_CNT, DEV_NAME);
 
     // 调用 class_create() 函数创建一个 RGB 灯的设备类,这里先填好模块
-	led_chrdev_class = class_create(THIS_MODULE, "led_chrdev");    
+	//led_chrdev_class = class_create(THIS_MODULE, "led_chrdev");    
 
     //分别给RGB关联文件，至此inode与我们定义的文件关联
 	for (; i < DEV_CNT; i++) {
@@ -158,8 +185,8 @@ Major = 0 开始，逐个查找设备号，直到找到一个闲置的设备号�
 
 		cdev_add(&led_cdev[i].dev, cur_dev, 1);
 
-		device_create(led_chrdev_class, NULL, cur_dev, NULL,
-			      DEV_NAME "%d", i);
+		//device_create(led_chrdev_class, NULL, cur_dev, NULL,
+		//	      DEV_NAME "%d", i);
 	}
 
 	return 0;
@@ -183,13 +210,13 @@ static __exit void led_chrdev_exit(void)
 	for (i = 0; i < DEV_CNT; i++) {
 		cur_dev = MKDEV(MAJOR(devno), MINOR(devno) + i);
 
-		device_destroy(led_chrdev_class, cur_dev);
+		//device_destroy(led_chrdev_class, cur_dev);
 
 		cdev_del(&led_cdev[i].dev);
 
 	}
 	unregister_chrdev_region(devno, DEV_CNT);
-	class_destroy(led_chrdev_class);
+	//class_destroy(led_chrdev_class);
 
 }
 
